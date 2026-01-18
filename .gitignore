@@ -1,0 +1,17 @@
+# Ambiente
+.env
+.env.*
+venv/
+.venv/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# IDEs
+.vscode/
+.idea/
+
+# OS
+.DS_Store
