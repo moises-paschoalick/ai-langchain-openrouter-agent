@@ -6,12 +6,36 @@ from memory.conversation_memory import ConversationMemory
 from agents.chat_agent import get_chat_agent_runnable # We will need to expose this
 from models.message import Message
 
+from services.dynamic_tool_service import DynamicToolService
+
 class ChatService:
     def __init__(self):
         self.memory_service = MemoryService()
-        self.agent = get_chat_agent_runnable()
+        self.dynamic_tool_service = DynamicToolService()
+        # We don't initialize self.agent here anymore because we need to rebuild it 
+        # with dynamic tools on each request (or at least check if they changed).
+        # For simplicity, we will get the agent in process_prompt.
 
     def process_prompt(self, conversation_id: str, prompt: str) -> Dict[str, Any]:
+        # Get dynamic tools
+        extra_tools = self.dynamic_tool_service.get_langchain_tools()
+        agent = get_chat_agent_runnable(extra_tools=extra_tools)
+        # 0. Check for pending tool calls (Pre-check)
+        history_msgs = self.memory_service.get_history(conversation_id)
+        if history_msgs:
+            last_msg = history_msgs[-1]
+            if last_msg.role == "assistant" and last_msg.tool_call_id:
+                # We have a pending tool call!
+                print(f"Detected pending tool call: {last_msg.tool_call_id}")
+                # Inject a cancellation message into the repository
+                self.memory_service.add_message(
+                    conversation_id,
+                    "tool",
+                    "Tool execution cancelled by user (new prompt received).",
+                    tool_call_id=last_msg.tool_call_id,
+                    name=last_msg.name or "tool"
+                )
+
         # 1. Add User Message
         self.memory_service.add_message(conversation_id, "user", prompt)
 
@@ -40,7 +64,7 @@ class ChatService:
         chat_history = formatted_history[:-1]
         current_input = formatted_history[-1].content if formatted_history else prompt
 
-        response = self.agent.invoke({
+        response = agent.invoke({
             "input": current_input,
             "chat_history": chat_history,
             # agent_scratchpad is handled by the agent if it's an AgentRunnable, 

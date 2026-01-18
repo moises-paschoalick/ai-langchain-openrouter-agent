@@ -7,13 +7,16 @@ from tools.system_tools import (
     obter_data_hora_atual
 )
 
-def get_chat_agent_runnable():
+def get_chat_agent_runnable(extra_tools=None):
     llm = get_llm()
     
     tools = [
         consultar_status_sistema,
         obter_data_hora_atual
     ]
+    
+    if extra_tools:
+        tools.extend(extra_tools)
 
     prompt = ChatPromptTemplate.from_messages([
         (
