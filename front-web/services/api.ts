@@ -11,6 +11,16 @@ export const apiService = {
     return response.json();
   },
 
+  async registerTool(toolDef: any): Promise<any> {
+    const response = await fetch(`${BASE_URL}/tools`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(toolDef),
+    });
+    if (!response.ok) throw new Error('Failed to register tool');
+    return response.json();
+  },
+
   async sendMessage(conversation_id: string, prompt: string): Promise<any> {
     const response = await fetch(`${BASE_URL}/chat`, {
       method: 'POST',

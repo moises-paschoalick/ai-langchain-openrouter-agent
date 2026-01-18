@@ -3,7 +3,8 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Sidebar from './components/Sidebar';
 import ChatContainer from './components/ChatContainer';
 import Toast from './components/Toast';
-import { AssistantConfig, Message, MessageRole, Thread } from './types';
+import HistoryView from './components/HistoryView';
+import { AssistantConfig, Message, MessageRole, Thread, ToolDefinition } from './types';
 import { apiService } from './services/api';
 
 const App: React.FC = () => {
@@ -28,6 +29,11 @@ const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isDebugMode, setIsDebugMode] = useState(false);
+
+  // History View State
+  const [showHistory, setShowHistory] = useState(false);
+  const [historyThreadId, setHistoryThreadId] = useState<string | null>(null);
+  const [historyMessages, setHistoryMessages] = useState<any[]>([]);
 
   // Sync config and threads to local storage
   useEffect(() => {
@@ -82,6 +88,41 @@ const App: React.FC = () => {
       setError('Erro ao carregar histórico da thread.');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleDeleteThread = (threadId: string) => {
+    setThreads(prev => prev.filter(t => t.conversation_id !== threadId));
+    if (currentThreadId === threadId) {
+      setCurrentThreadId(null);
+      setMessages([]);
+    }
+    // Note: Backend deletion is not implemented yet.
+  };
+
+  const handleViewHistory = async (threadId: string) => {
+    try {
+      setHistoryThreadId(threadId);
+      setShowHistory(true);
+      const history = await apiService.getThreadHistory(threadId);
+      setHistoryMessages(history);
+    } catch (err) {
+      setError('Erro ao carregar histórico completo.');
+    }
+  };
+
+  const handleRegisterTool = async (tool: ToolDefinition) => {
+    try {
+      const toolDef = {
+        name: tool.name,
+        description: tool.description,
+        parameters: JSON.parse(tool.inputStructure),
+        strict: false // Default to false or add to UI
+      };
+      await apiService.registerTool(toolDef);
+      alert(`Tool ${tool.name} registered successfully!`);
+    } catch (err) {
+      setError('Erro ao registrar tool. Verifique o JSON.');
     }
   };
 
@@ -168,23 +209,26 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[#0b0b0b]">
+    <div className="flex h-screen overflow-hidden bg-[#0b0b0b] relative">
       {/* Sidebar - Config */}
-      <Sidebar 
-        config={config} 
-        setConfig={setConfig} 
+      <Sidebar
+        config={config}
+        setConfig={setConfig}
         threads={threads}
         currentThreadId={currentThreadId}
         onNewThread={handleNewThread}
         onSelectThread={handleSelectThread}
+        onDeleteThread={handleDeleteThread}
+        onViewHistory={handleViewHistory}
+        onRegisterTool={handleRegisterTool}
         isDebugMode={isDebugMode}
         setIsDebugMode={setIsDebugMode}
       />
 
       {/* Main Content - Chat */}
       <div className="flex-1 flex flex-col relative">
-        <ChatContainer 
-          messages={messages} 
+        <ChatContainer
+          messages={messages}
           onSendMessage={handleSendMessage}
           onToolSubmit={handleToolSubmit}
           isLoading={isLoading}
@@ -192,6 +236,15 @@ const App: React.FC = () => {
           isDebugMode={isDebugMode}
         />
       </div>
+
+      {/* History View Sidebar */}
+      {showHistory && historyThreadId && (
+        <HistoryView
+          threadId={historyThreadId}
+          history={historyMessages}
+          onClose={() => setShowHistory(false)}
+        />
+      )}
 
       {/* Error Toasts */}
       {error && <Toast message={error} onClose={() => setError(null)} />}
