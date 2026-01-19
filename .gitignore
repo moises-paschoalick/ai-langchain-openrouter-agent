@@ -1,6 +1,8 @@
 # Ambiente
 .env
 .env.*
+/venv/
+/.venv/
 venv/
 .venv/
 

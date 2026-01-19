@@ -1,0 +1,5 @@
+
+{
+  "name": "Assistants Playground",
+  "description": "A feature-rich playground for testing AI assistants with persistent threads, dynamic prompts, and tool call simulations using REST endpoints."
+}
