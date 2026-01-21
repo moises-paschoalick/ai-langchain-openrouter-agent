@@ -11,7 +11,7 @@ def get_llm():
         api_key=os.getenv("OPENROUTER_API_KEY"),
         temperature=0,
         default_headers={
-            "HTTP-Referer": "https://localhost:3000",
+            "HTTP-Referer": "https://localhost:5000",
             "X-Title": "LangChain OpenRouter App"
         }
     )
